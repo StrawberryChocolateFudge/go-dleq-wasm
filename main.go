@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"fmt"
 	"syscall/js"
 
 	mcrypto "github.com/athanorlabs/atomic-swap/crypto/monero"
@@ -23,8 +24,17 @@ func main() {
 // ==== JS Wrappers ====
 // Wrapper for generateSecretForCurves
 func jsGenerateSecretForCurves(this js.Value, args []js.Value) any {
-	secret := generateSecretForCurves()
-	return hex.EncodeToString(secret[:])
+	secret, err := generateSecretForCurves()
+
+	if err != nil {
+		return map[string]any{
+			"error": err.Error(),
+		}
+	}
+
+	return map[string]any{
+		"result": hex.EncodeToString(secret[:]),
+	}
 }
 
 // Wrapper for NewProof
@@ -39,8 +49,16 @@ func jsNewProof(this js.Value, args []js.Value) any {
 	}
 	var secret [32]byte
 	copy(secret[:], secretBytes)
-	proofBytes := NewProof(secret)
-	return hex.EncodeToString(proofBytes)
+	proofBytes, err := NewProof(secret)
+
+	if err != nil {
+		return map[string]any{
+			"error": err.Error(),
+		}
+	}
+	return map[string]any{
+		"result": hex.EncodeToString(proofBytes),
+	}
 }
 
 // Wrapper for Verify
@@ -54,35 +72,43 @@ func jsVerifyProof(this js.Value, args []js.Value) any {
 	if err != nil {
 		return "invalid proof format (hex string expected)"
 	}
-	ethereumPubkey, moneroPubkey := Verify(proofBytes)
+	ethereumPubkey, moneroPubkey, err := Verify(proofBytes)
+
+	if err != nil {
+		return map[string]any{
+			"error": err.Error(),
+		}
+	}
 
 	result := map[string]any{
-		"secp256k1Pub": ethereumPubkey,
-		"ed25519Pub":   moneroPubkey,
+		"result": map[string]any{
+			"secp256k1Pub": ethereumPubkey,
+			"ed25519Pub":   moneroPubkey,
+		},
 	}
 	return js.ValueOf(result)
 }
 
 // === Internal Go Logic ===
 
-func generateSecretForCurves() [32]byte {
+func generateSecretForCurves() (*[32]byte, error) {
 	curveA := secp256k1.NewCurve()
 	curveB := ed25519.NewCurve()
 	x, err := dleq.GenerateSecretForCurves(curveA, curveB)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return x
+	return &x, nil
 }
 
-func NewProof(x [32]byte) []byte {
+func NewProof(x [32]byte) ([]byte, error) {
 	curveA := secp256k1.NewCurve()
 	curveB := ed25519.NewCurve()
 	proof, err := dleq.NewProof(curveA, curveB, x)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return proof.Serialize()
+	return proof.Serialize(), nil
 }
 
 type VerifyResult struct {
@@ -90,7 +116,7 @@ type VerifyResult struct {
 	secp256k1Pub string
 }
 
-func Verify(serialized_proof []byte) (string, string) {
+func Verify(serialized_proof []byte) (string, string, error) {
 	var proof dleq.Proof
 
 	curveA := secp256k1.NewCurve()
@@ -101,13 +127,13 @@ func Verify(serialized_proof []byte) (string, string) {
 	err := proof.Verify(curveA, curveB)
 	if err != nil {
 
-		panic(err)
+		return "", "", fmt.Errorf("An error occured")
 	}
 
 	secpPub, err := dsecp256k1.ParsePubKey(proof.CommitmentA.Encode())
 	if err != nil {
 
-		panic(err)
+		return "", "", fmt.Errorf("An error occured")
 	}
 
 	secp256k1Pub := csecp256k1.NewPublicKeyFromBigInt(secpPub.X(), secpPub.Y())
@@ -115,8 +141,8 @@ func Verify(serialized_proof []byte) (string, string) {
 	ed25519Pub, err := mcrypto.NewPublicKeyFromBytes(proof.CommitmentB.Encode())
 	if err != nil {
 
-		panic(err)
+		return "", "", fmt.Errorf("An error occured")
 	}
 
-	return secp256k1Pub.String(), ed25519Pub.String()
+	return secp256k1Pub.String(), ed25519Pub.String(), nil
 }

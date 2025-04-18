@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <title>DLEQ WASM Demo</title>
 </head>
+
 <body>
   <h1>DLEQ Proof Generator</h1>
   <button id="generate">Generate Secret</button>
@@ -26,7 +28,11 @@
 
       document.getElementById("generate").onclick = () => {
         secret = generateSecretForCurves();
-        document.getElementById("secret").textContent = secret;
+        if (secret.error != undefined) {
+          document.getElementById("secret").textContent = `Error: ${secret.error}`
+          return;
+        }
+        document.getElementById("secret").textContent = secret.result;
       };
 
       document.getElementById("prove").onclick = () => {
@@ -34,8 +40,14 @@
           alert("Generate a secret first!");
           return;
         }
-        proof = newProof(secret);
-        document.getElementById("proof").textContent = proof;
+        proof = newProof(secret.result);
+        if (proof.error != undefined) {
+          document.getElementById("proof").textContent = `Error: ${proof.error}`
+          return;
+        }
+
+
+        document.getElementById("proof").textContent = proof.result;
       };
 
       document.getElementById("verify").onclick = () => {
@@ -43,11 +55,19 @@
           alert("Generate a proof first!");
           return;
         }
-        const result = verifyProof(proof);
-        console.log(result)
-        document.getElementById("verification").textContent = result;
+        const verification = verifyProof(proof.result);
+        if (verification.error != undefined) {
+          document.getElementById("verification").textContent = `Error: ${verification.error}`
+          return;
+        }
+
+        console.log(verification.result)
+
+
+        document.getElementById("verification").textContent = `secp256k1Pub: ${verification.result.secp256k1Pub}\n, ed25519Pub: ${verification.result.ed25519Pub}`;
       };
     });
   </script>
 </body>
+
 </html>
