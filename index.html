@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DLEQ WASM Demo</title>
+</head>
+<body>
+  <h1>DLEQ Proof Generator</h1>
+  <button id="generate">Generate Secret</button>
+  <button id="prove">Generate Proof</button>
+  <button id="verify">Verify Proof</button>
+
+  <p><strong>Secret:</strong> <span id="secret"></span></p>
+  <p><strong>Proof:</strong> <span id="proof"></span></p>
+  <p><strong>Verification:</strong> <span id="verification"></span></p>
+
+  <script src="wasm_exec.js"></script>
+  <script>
+    const go = new Go(); // Provided by wasm_exec.js
+
+    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then(result => {
+      go.run(result.instance);
+
+      let secret = "";
+      let proof = "";
+
+      document.getElementById("generate").onclick = () => {
+        secret = generateSecretForCurves();
+        document.getElementById("secret").textContent = secret;
+      };
+
+      document.getElementById("prove").onclick = () => {
+        if (!secret) {
+          alert("Generate a secret first!");
+          return;
+        }
+        proof = newProof(secret);
+        document.getElementById("proof").textContent = proof;
+      };
+
+      document.getElementById("verify").onclick = () => {
+        if (!proof) {
+          alert("Generate a proof first!");
+          return;
+        }
+        const result = verifyProof(proof);
+        document.getElementById("verification").textContent = result;
+      };
+    });
+  </script>
+</body>
+</html>
