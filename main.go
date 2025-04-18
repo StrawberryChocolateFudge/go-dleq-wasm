@@ -40,12 +40,12 @@ func jsGenerateSecretForCurves(this js.Value, args []js.Value) any {
 // Wrapper for NewProof
 func jsNewProof(this js.Value, args []js.Value) any {
 	if len(args) != 1 {
-		return "expected 1 argument: secret (hex string)"
+		return map[string]any{"error": "expected 1 argument: secret (hex string)"}
 	}
 	secretHex := args[0].String()
 	secretBytes, err := hex.DecodeString(secretHex)
 	if err != nil || len(secretBytes) != 32 {
-		return "invalid secret format (expected 32-byte hex)"
+		return map[string]any{"error": "invalid secret format (expected 32-byte hex)"}
 	}
 	var secret [32]byte
 	copy(secret[:], secretBytes)
@@ -64,13 +64,13 @@ func jsNewProof(this js.Value, args []js.Value) any {
 // Wrapper for Verify
 func jsVerifyProof(this js.Value, args []js.Value) any {
 	if len(args) != 1 {
-		return "expected 1 argument: proof (hex string)"
+		return map[string]any{"error": "expected 1 argument: proof (hex string)"}
 	}
 
 	proofHex := args[0].String()
 	proofBytes, err := hex.DecodeString(proofHex)
 	if err != nil {
-		return "invalid proof format (hex string expected)"
+		return map[string]any{"error": "invalid proof format (hex string expected)"}
 	}
 	ethereumPubkey, moneroPubkey, err := Verify(proofBytes)
 
